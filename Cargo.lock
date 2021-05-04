@@ -20,9 +20,9 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "embedded-graphics"
-version = "0.6.0"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b2525e6b487bd2ec3c88d255ae134ccd55cf111a31a17a3008409162dcbcb1e"
+checksum = "40a69991ceb896bd4810a0cf2bcc46fc94b7860573c71f965d8e5b3d66942fed"
 dependencies = [
  "byteorder",
 ]
@@ -34,6 +34,7 @@ dependencies = [
  "embedded-graphics",
  "wasm-bindgen",
  "web-sys",
+ "wio_splash",
 ]
 
 [[package]]
@@ -157,4 +158,11 @@ checksum = "2d6f51648d8c56c366144378a33290049eafdd784071077f6fe37dae64c1c4cb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "wio_splash"
+version = "0.1.0"
+dependencies = [
+ "embedded-graphics",
 ]
