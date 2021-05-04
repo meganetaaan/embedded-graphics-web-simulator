@@ -2,25 +2,29 @@ use embedded_graphics_web_simulator::{
     display::WebSimulatorDisplay, output_settings::OutputSettingsBuilder,
 };
 use wasm_bindgen::prelude::*;
+use embedded_graphics::{
+    image::Image,
+    image::ImageRawLE,
+    pixelcolor::{Rgb565},
+    prelude::*,
+};
 use web_sys::console;
 
-use embedded_graphics::{
-    egcircle, egtext,
-    fonts::Font6x8,
-    image::Image,
-    pixelcolor::{BinaryColor, Rgb565},
-    prelude::*,
-    primitive_style, text_style,
-};
-use tinybmp::Bmp;
-
-// When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
-// allocator.
-//
-// If you don't want to use `wee_alloc`, you can safely delete this.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+fn draw_image<D>(&raw_image: &ImageRawLE<Rgb565>, display: &mut D) -> Result<(), D::Error>
+where
+    D: DrawTarget<Rgb565>,
+{
+    use core::convert::TryFrom;
+    let (w, h) = display.size().into();
+    let (iw, ih) = (raw_image.width(), raw_image.height());
+    let (x, y) = (
+        i32::try_from(w / 2 - iw / 2).unwrap(),
+        i32::try_from(h / 2 - ih / 2).unwrap(),
+    );
+    let top_left = Point::new(x, y);
+    let image = Image::new(&raw_image, top_left);
+    image.draw(display)
+}
 
 // This is like the `main` function, except for JavaScript.
 #[wasm_bindgen(start)]
@@ -30,33 +34,14 @@ pub fn main_js() -> Result<(), JsValue> {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    let output_settings = OutputSettingsBuilder::new().scale(3).build();
-    let mut text_display = WebSimulatorDisplay::new((128, 64), &output_settings);
+    let output_settings = OutputSettingsBuilder::new().scale(1).build();
     let mut img_display = WebSimulatorDisplay::new((128, 128), &output_settings);
 
-    // Show Font using a macro, source https://github.com/jamwaffles/embedded-graphics/blob/master/simulator/examples/text-fonts.rs#L64
-    egtext!(
-        text = "Hello, wasm world!",
-        top_left = (10, 30),
-        style = text_style!(font = Font6x8, text_color = BinaryColor::On)
-    )
-    .draw(&mut text_display)
-    .unwrap_or_else(|_| console::log_1(&"Couldn't draw text".into()));
+    let output_settings_x2 = OutputSettingsBuilder::new().scale(2).build();
+    let mut img_display_x2 = WebSimulatorDisplay::new((128, 128), &output_settings_x2);
 
-    // Load the BMP image
-    let bmp = Bmp::from_slice(include_bytes!("./assets/rust-pride.bmp")).unwrap();
-    let image: Image<Bmp, Rgb565> = Image::new(&bmp, Point::new(32, 32));
-    image
-        .draw(&mut img_display)
-        .unwrap_or_else(|_| console::log_1(&"Couldn't draw image".into()));
-
-    let circle = egcircle!(
-        center = (64, 64),
-        radius = 33,
-        style = primitive_style!(stroke_color = BinaryColor::On, stroke_width = 1)
-    );
-    circle
-        .draw(&mut img_display)
-        .unwrap_or_else(|_| console::log_1(&"Couldn't draw circle".into()));
+    let raw = ImageRawLE::new(include_bytes!("./assets/ferris.raw"), 86, 64);
+    draw_image(&raw, &mut img_display).unwrap();
+    draw_image(&raw, &mut img_display_x2).unwrap();
     Ok(())
 }
