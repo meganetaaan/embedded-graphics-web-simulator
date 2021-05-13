@@ -49,7 +49,7 @@ impl WebSimulatorDisplay {
             .expect("couldn't append canvas to body");
 
         WebSimulatorDisplay {
-            size: Size::new(width, height),
+            size: Size::new(size.0, size.1),
             canvas,
             output_settings: output_settings.clone(),
         }
