@@ -2,28 +2,22 @@ use embedded_graphics_web_simulator::{
     display::WebSimulatorDisplay, output_settings::OutputSettingsBuilder,
 };
 use wasm_bindgen::prelude::*;
-use embedded_graphics::{
-    image::Image,
-    image::ImageRawLE,
-    pixelcolor::{Rgb565},
-    prelude::*,
-};
-use web_sys::console;
+use wasm_bindgen::JsCast;
 
-fn draw_image<D>(&raw_image: &ImageRawLE<Rgb565>, display: &mut D) -> Result<(), D::Error>
-where
-    D: DrawTarget<Rgb565>,
-{
-    use core::convert::TryFrom;
-    let (w, h) = display.size().into();
-    let (iw, ih) = (raw_image.width(), raw_image.height());
-    let (x, y) = (
-        i32::try_from(w / 2 - iw / 2).unwrap(),
-        i32::try_from(h / 2 - ih / 2).unwrap(),
-    );
-    let top_left = Point::new(x, y);
-    let image = Image::new(&raw_image, top_left);
-    image.draw(display)
+use std::cell::RefCell;
+use std::rc::Rc;
+use boid::*;
+static SCREEN_WIDTH: u16 = 320;
+static SCREEN_HEIGHT: u16 = 240;
+
+fn window() -> web_sys::Window {
+    web_sys::window().expect("no global `window` exists")
+}
+
+fn request_animation_frame(f: &Closure<dyn FnMut()>) {
+    window()
+        .request_animation_frame(f.as_ref().unchecked_ref())
+        .expect("should register `requestAnimationFrame` OK");
 }
 
 // This is like the `main` function, except for JavaScript.
@@ -34,14 +28,27 @@ pub fn main_js() -> Result<(), JsValue> {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    let output_settings = OutputSettingsBuilder::new().scale(1).build();
-    let mut img_display = WebSimulatorDisplay::new((128, 128), &output_settings);
+    let output_settings = OutputSettingsBuilder::new().scale(3).build();
+    let mut display = WebSimulatorDisplay::new((SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32), &output_settings);
 
-    let output_settings_x2 = OutputSettingsBuilder::new().scale(2).build();
-    let mut img_display_x2 = WebSimulatorDisplay::new((128, 128), &output_settings_x2);
+    let mut boids: Boids = Boids::new();
+    let mut boids_renderer = BoidRenderer::new();
+    boids.init();
+    boids.update();
+    boids_renderer.draw(&mut display, &boids).unwrap();
+    let f = Rc::new(RefCell::new(None));
+    let g = f.clone();
 
-    let raw = ImageRawLE::new(include_bytes!("./assets/ferris.raw"), 86, 64);
-    draw_image(&raw, &mut img_display).unwrap();
-    draw_image(&raw, &mut img_display_x2).unwrap();
+    *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
+        boids.update();
+        // clear_screen(&mut display).unwrap();
+        boids_renderer.clear(&mut display).unwrap();
+        boids_renderer.draw(&mut display, &boids).unwrap();
+
+        // Schedule ourself for another requestAnimationFrame callback.
+        request_animation_frame(f.borrow().as_ref().unwrap());
+    }) as Box<dyn FnMut()>));
+
+    request_animation_frame(g.borrow().as_ref().unwrap());
     Ok(())
 }
